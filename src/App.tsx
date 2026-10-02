@@ -18,7 +18,7 @@ const fortunes = [
 ]
 
 function App() {
-  const [hasDrawing, setHasDrawing] = useState(false)
+ const [, setHasDrawing] = useState(false)
   const [fortune, setFortune] = useState<string | null>(null)
 
   const revealFortune = () => {
