@@ -1,188 +1,229 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react'
 
-function DrawingCanvas({ onDrawingStart }) {
-  const canvasRef = useRef(null);
-  const pointsRef = useRef([]);
-  const isDrawingRef = useRef(false);
+type Point = {
+  x: number
+  y: number
+}
+
+type DrawingCanvasProps = {
+  onDrawingStart: () => void
+}
+
+type DrawLayerOptions = {
+  color: string
+  width: number
+  glow: number
+  opacity?: number
+}
+
+function DrawingCanvas({ onDrawingStart }: DrawingCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const pointsRef = useRef<Point[]>([])
+  const isDrawingRef = useRef(false)
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const canvas = canvasRef.current
+
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+
+    if (!ctx) return
 
     const resizeCanvas = () => {
-      const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect()
+      const dpr = window.devicePixelRatio || 1
 
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
+      canvas.width = Math.round(rect.width * dpr)
+      canvas.height = Math.round(rect.height * dpr)
 
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-    };
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+    }
 
-    resizeCanvas();
+    resizeCanvas()
 
-    const observer = new ResizeObserver(resizeCanvas);
-    observer.observe(canvas);
+    const observer = new ResizeObserver(resizeCanvas)
+    observer.observe(canvas)
 
-    return () => observer.disconnect();
-  }, []);
+    return () => observer.disconnect()
+  }, [])
 
-  const getPoint = (event) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+  const getPoint = (event: PointerEvent): Point => {
+    const canvas = canvasRef.current
+
+    if (!canvas) {
+      return { x: 0, y: 0 }
+    }
+
+    const rect = canvas.getBoundingClientRect()
 
     return {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
-    };
-  };
+    }
+  }
 
   const drawCurve = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const canvas = canvasRef.current
 
-    const points = pointsRef.current;
+    if (!canvas) return
 
-    if (points.length === 0) return;
+    const ctx = canvas.getContext('2d')
 
-    const rect = canvas.getBoundingClientRect();
+    if (!ctx) return
 
-    // Очищаем только внутреннюю область canvas
-    ctx.clearRect(0, 0, rect.width, rect.height);
+    const points = pointsRef.current
 
-    /*
-     * Если есть только одна точка —
-     * рисуем маленькую точку.
-     */
+    if (points.length === 0) return
+
+    const rect = canvas.getBoundingClientRect()
+
+    ctx.clearRect(0, 0, rect.width, rect.height)
+
     if (points.length === 1) {
-      const point = points[0];
+      const point = points[0]
 
-      ctx.save();
+      ctx.save()
 
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+      ctx.beginPath()
+      ctx.arc(point.x, point.y, 4, 0, Math.PI * 2)
 
-      ctx.fillStyle = '#6047ff';
-      ctx.shadowColor = '#ff4f91';
-      ctx.shadowBlur = 8;
+      ctx.fillStyle = '#6047ff'
+      ctx.shadowColor = '#ff4f91'
+      ctx.shadowBlur = 8
 
-      ctx.fill();
+      ctx.fill()
 
-      ctx.restore();
+      ctx.restore()
 
-      return;
+      return
     }
 
-    /*
-     * Строим ОДНУ непрерывную кривую.
-     *
-     * Используем квадратичные кривые:
-     * предыдущая точка → середина → следующая точка
-     */
-    const drawLayer = ({ color, width, glow, opacity = 1 }) => {
-      ctx.save();
+    const drawLayer = ({
+      color,
+      width,
+      glow,
+      opacity = 1,
+    }: DrawLayerOptions) => {
+      ctx.save()
 
-      ctx.beginPath();
+      ctx.beginPath()
 
-      ctx.moveTo(points[0].x, points[0].y);
+      ctx.moveTo(points[0].x, points[0].y)
 
       for (let i = 1; i < points.length - 1; i++) {
-        const current = points[i];
-        const next = points[i + 1];
+        const current = points[i]
+        const next = points[i + 1]
 
-        const middleX = (current.x + next.x) / 2;
-        const middleY = (current.y + next.y) / 2;
+        const middleX = (current.x + next.x) / 2
+        const middleY = (current.y + next.y) / 2
 
-        ctx.quadraticCurveTo(current.x, current.y, middleX, middleY);
+        ctx.quadraticCurveTo(
+          current.x,
+          current.y,
+          middleX,
+          middleY
+        )
       }
 
-      const last = points[points.length - 1];
-      const previous = points[points.length - 2];
+      const last = points[points.length - 1]
+      const previous = points[points.length - 2]
 
-      ctx.quadraticCurveTo(previous.x, previous.y, last.x, last.y);
+      ctx.quadraticCurveTo(
+        previous.x,
+        previous.y,
+        last.x,
+        last.y
+      )
 
-      ctx.strokeStyle = color;
-      ctx.globalAlpha = opacity;
-      ctx.lineWidth = width;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.strokeStyle = color
+      ctx.globalAlpha = opacity
+      ctx.lineWidth = width
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
 
       if (glow > 0) {
-        ctx.shadowColor = color;
-        ctx.shadowBlur = glow;
+        ctx.shadowColor = color
+        ctx.shadowBlur = glow
       }
 
-      ctx.stroke();
+      ctx.stroke()
 
-      ctx.restore();
-    };
+      ctx.restore()
+    }
 
-    // Розовое мягкое свечение
     drawLayer({
       color: '#ff4f91',
       width: 9,
       glow: 9,
       opacity: 0.35,
-    });
+    })
 
-    // Фиолетовая основа
     drawLayer({
       color: '#6047ff',
       width: 4,
       glow: 4,
-    });
+    })
 
-    // Белая тонкая линия внутри
     drawLayer({
       color: '#ffffff',
       width: 1.2,
       glow: 0,
-    });
-  };
+    })
+  }
 
-  const startDrawing = (event) => {
-    const canvas = canvasRef.current;
+  const startDrawing = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
 
-    isDrawingRef.current = true;
-    onDrawingStart();
+    if (!canvas) return
 
-    const point = getPoint(event);
+    isDrawingRef.current = true
 
-    pointsRef.current = [point];
+    onDrawingStart()
 
-    canvas.setPointerCapture(event.pointerId);
+    const point = getPoint(event.nativeEvent)
 
-    drawCurve();
-  };
+    pointsRef.current = [point]
 
-  const draw = (event) => {
-    if (!isDrawingRef.current) return;
+    canvas.setPointerCapture(event.pointerId)
 
-    const events = event.getCoalescedEvents
-      ? event.getCoalescedEvents()
-      : [event];
+    drawCurve()
+  }
+
+  const draw = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) return
+
+    const nativeEvent = event.nativeEvent
+
+    const events = nativeEvent.getCoalescedEvents
+      ? nativeEvent.getCoalescedEvents()
+      : [nativeEvent]
 
     events.forEach((moveEvent) => {
-      const point = getPoint(moveEvent);
+      const point = getPoint(moveEvent)
 
-      pointsRef.current.push(point);
-    });
+      pointsRef.current.push(point)
+    })
 
-    drawCurve();
-  };
+    drawCurve()
+  }
 
-  const stopDrawing = (event) => {
-    const canvas = canvasRef.current;
+  const stopDrawing = (
+    event: React.PointerEvent<HTMLCanvasElement>
+  ) => {
+    const canvas = canvasRef.current
 
-    if (event && canvas.hasPointerCapture(event.pointerId)) {
-      canvas.releasePointerCapture(event.pointerId);
+    if (!canvas) return
+
+    if (canvas.hasPointerCapture(event.pointerId)) {
+      canvas.releasePointerCapture(event.pointerId)
     }
 
-    isDrawingRef.current = false;
-  };
+    isDrawingRef.current = false
+  }
 
   return (
     <canvas
@@ -193,7 +234,7 @@ function DrawingCanvas({ onDrawingStart }) {
       onPointerUp={stopDrawing}
       onPointerCancel={stopDrawing}
     />
-  );
+  )
 }
 
-export default DrawingCanvas;
+export default DrawingCanvas
